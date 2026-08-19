@@ -1,0 +1,42 @@
+# 密钥与本地配置（不要提交）
+.env
+.env.*
+config.yaml
+# 一次性环境探测快照（运行时生成，跨平台不同，不要提交）
+.env-snapshot.json
+
+# 安全执行工作区（§22，run_command 默认受限根目录；内含用户测试产物，不提交）
+# 锚定到仓库根目录，避免误伤 vendored 的 src/parts/opensquilla/src/opensquilla/sandbox/ 源码
+/sandbox/
+
+# 已移除的 vendored 组件（opensquilla 路由层，2026-08-18 用轻量路由层替代）
+src/parts/opensquilla/
+
+# Mem0 运行时产物（已弃用；保留以防旧数据残留）
+.mem0/
+.mem0_local/
+
+# 本地 JSONL 记忆存储（零依赖回退，跨会话保留）
+.memory/
+
+# agent-knowledge 知识库（compiled-memory，纯本地 YAML vault + SQLite）
+.knowledge/
+
+# Python 字节码
+__pycache__/
+*.pyc
+
+# 会话检查点与本地运行产物
+runs/
+logs/
+memory.json
+
+# §59 Prove 阶段自动生成的归档报告（运行时产物，不提交）
+reports/
+
+# §64 prompt_toolkit 输入历史文件（运行时产物，不提交）
+.fable5_history
+
+# 会话遗留的临时/草稿文件（不提交）
+_notes_list.txt
+项目日志.md

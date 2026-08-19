@@ -1,0 +1,53 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/inject_instructions.py\"",
+            "timeout": 10,
+            "statusMessage": "Orchestrator instructions"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "^(Agent|Task|Workflow|TaskCreate)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/ledger_guard_spawn.py\"",
+            "timeout": 10,
+            "statusMessage": "Ledger guard (spawn/tasks)"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/ledger_guard_stop.py\"",
+            "timeout": 10,
+            "statusMessage": "Ledger guard (close)"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/cleanup_session_cache.py\"",
+            "timeout": 20,
+            "statusMessage": "Orchestrator cleanup (cache + teammates)"
+          }
+        ]
+      }
+    ]
+  }
+}

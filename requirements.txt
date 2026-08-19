@@ -1,0 +1,26 @@
+# ── Fable 5 青春版（fable5-lite）运行时依赖 ──
+# 按字母顺序排列；注释说明用途与代码内 import 名（如有差异）。
+
+# 跨会话记忆后端（PyPI 包名 compiled-memory，代码内 import 名为 agent_knowledge）
+compiled-memory
+
+# Model Context Protocol Python SDK（MCP 客户端集成，src/integrations/mcp_client.py）
+mcp
+
+# 可选沙箱后端（硬件级隔离优先；未安装时回退本地安全执行）
+microsandbox
+
+# 交互式终端输入（历史记录 / 自动补全 / 多行输入）
+prompt_toolkit
+
+# 加载 .env 环境变量（缺失时静默跳过）
+python-dotenv
+
+# YAML 解析（用户数据、配置、技能索引）
+pyyaml
+
+# HTTP 客户端（调用 DeepSeek API / MCP，首选 requests）
+requests
+
+# LLM Agent 行为评估框架（可选评估依赖）
+rubric-eval

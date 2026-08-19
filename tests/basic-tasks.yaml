@@ -1,0 +1,30 @@
+# Fable 5 基础能力评估任务
+#
+# 运行: evalkit run tests/basic-tasks.yaml
+#
+# 语义说明（供评估器/人工解读）：
+#   每个任务将 `input` 作为用户任务喂给 Fable 5 (src/cli/main.py)，
+#   由 Think -> Act -> Prove 循环产出最终裁决：
+#     - VERIFIED       : 任务目标已达成（文件已创建/读取成功等）
+#     - REFUTED        : 任务失败或被正确拒止（如读取不存在的文件）
+#     - UNVERIFIABLE   : 无法判定（兜底）
+#   评估器比对模型实际产出的最终裁决与 `expected` 是否一致。
+#
+# 注：evalkit 的实际 YAML schema 以工具版本为准；本文件字段
+# （id/name/input/expected）为标准最小集，安装后如格式不符可对齐调整。
+
+tasks:
+  - id: file-create
+    name: 文件创建测试
+    input: "创建一个 test.txt 文件，内容是 hello"
+    expected: VERIFIED
+
+  - id: file-read
+    name: 文件读取测试
+    input: "读取 test.txt 的内容"
+    expected: VERIFIED
+
+  - id: file-read-missing
+    name: 文件操作失败测试（读取不存在的文件）
+    input: "读取不存在的文件"
+    expected: REFUTED

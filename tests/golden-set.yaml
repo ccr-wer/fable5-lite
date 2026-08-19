@@ -1,0 +1,52 @@
+name: Fable 5 首批黄金用例
+test_cases:
+  - id: file-create-delete
+    query: "在沙箱里创建一个 eval-test.md 文件，内容是 '# Eval Test'，然后读取并删除它。"
+    checks:
+      regexPatterns:
+        - "VERIFIED"
+      regexMode: any
+
+  - id: file-read-fail
+    query: "读取 sandbox/nonexistent.txt 的内容。"
+    checks:
+      regexPatterns:
+        - "REFUTED"
+        - "错误"
+      regexMode: any
+
+  - id: list-files
+    query: "列出沙箱目录下的所有文件。"
+    checks:
+      regexPatterns:
+        - "目录"
+        - "文件"
+      regexMode: any
+
+  - id: file-org
+    query: "在 sandbox 当前工作目录下先创建两个测试文件 a.tmp（内容 temp）和 b.log（内容 log），然后把它们移动到 archive 子目录中。如果 archive 目录不存在，就先创建它。"
+    checks:
+      regexPatterns:
+        - "VERIFIED"
+      regexMode: any
+
+  - id: code-edit
+    query: "在 sandbox 目录下创建一个 hello.py 文件，内容为 print('Hello')，然后将其中的 'Hello' 替换为 'World'。"
+    checks:
+      regexPatterns:
+        - "VERIFIED"
+      regexMode: any
+
+  - id: error-diagnosis
+    query: "读取 sandbox/nonexistent.py 文件，如果不存在，则创建一个空文件并写入 '# 新文件'。"
+    checks:
+      regexPatterns:
+        - "VERIFIED"
+      regexMode: any
+
+  - id: workspace-create-run
+    query: "在桌面创建一个名为 fable5-demo 的目录，在该目录下创建一个名为 main.py 的文件，内容为 print('Hello from Fable 5!')，然后运行 main.py。"
+    checks:
+      regexPatterns:
+        - "Hello from Fable 5!"
+      regexMode: any

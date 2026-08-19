@@ -1,0 +1,6 @@
+{
+  "service_name": "orders-api",
+  "port": 8080,
+  "db_path": "data/users.db",
+  "timeout_seconds": "30"
+}
