@@ -1,12 +1,13 @@
 """V4 flash API 封装 — src/integrations/llm.py
 
-统一的 LLM 调用层。从环境变量 / .env 读取配置，调用 OpenAI 兼容的
+统一的 LLM 调用层。从用户数据目录 config.yaml 读取配置（§87：API Key 只从
+config.yaml 读取，不再使用环境变量 / .env），调用 OpenAI 兼容的
 chat/completions 接口（默认指向 DeepSeek 兼容地址，可按需替换为真实地址）。
 
-配置（通过 .env 或环境变量）：
-  V4_API_KEY   必填，API 密钥
-  V4_API_URL   选填，chat completions 地址（默认 DeepSeek 兼容，请替换为实际地址）
-  V4_MODEL     选填，call_llm 未显式指定模型时的默认模型（默认 deepseek-v4-flash）
+配置（用户数据目录 config.yaml，Windows: %APPDATA%/fable5/config/config.yaml）：
+  api_key    必填，API 密钥（首次启动配置向导写入）
+  api_url    选填，chat completions 地址（默认 DeepSeek 兼容，请替换为实际地址）
+  model      选填，call_llm 未显式指定模型时的默认模型（默认 deepseek-v4-flash）
 
 对外接口：
   call_llm(messages: list, system: str = "") -> str
@@ -24,47 +25,8 @@ from src.config.models import AVAILABLE_MODELS
 # 工具注册表（Function Calling）：TOOLS 传给模型，execute_tool 执行模型选定的工具
 from src.integrations.tools import TOOLS, execute_tool, get_env_snapshot, format_env_block
 
-# ── .env 加载（零依赖：优先 python-dotenv，失败则自写最小解析） ──
-def _load_dotenv() -> None:
-    try:
-        from dotenv import load_dotenv  # type: ignore
-        load_dotenv()
-        return
-    except Exception:
-        pass
-    # 向上查找 .env：项目根 (fable5-lite/) 或当前目录
-    here = os.path.dirname(os.path.abspath(__file__))
-    candidates = []
-    cur = here
-    for _ in range(6):
-        candidates.append(os.path.join(cur, ".env"))
-        parent = os.path.dirname(cur)
-        if parent == cur:
-            break
-        cur = parent
-    candidates.append(os.path.join(os.getcwd(), ".env"))
-    for path in candidates:
-        if os.path.isfile(path):
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    for line in f:
-                        line = line.strip()
-                        if not line or line.startswith("#") or "=" not in line:
-                            continue
-                        k, v = line.split("=", 1)
-                        k = k.strip()
-                        v = v.strip().strip('"').strip("'")
-                        if k and k not in os.environ:
-                            os.environ[k] = v
-            except Exception:
-                pass
-            break
-
-
-_load_dotenv()
-
-
-# ── 融合系统提示词加载（src/prompts/system_prompt_merged.md）──
+# ── §87：统一配置存储路径 —— API Key 只从用户数据目录 config.yaml 读取 ──
+# 移除 .env 加载（_load_dotenv）与 dotenv 依赖：不再从项目根 .env / 环境变量读取配置。
 # 该文件由 Fable 5 通用系统提示词（src/prompts/system_prompt.md，已备份为
 # fable5_system.md.bak）与 DeepSeek V4 增强（docs/prompts/deepseek_v4_enhance.md，
 # 已备份为 deepseek_v4_enhance.md.bak）融合而成；作为各阶段调用的基础 system 提示词，
@@ -120,12 +82,13 @@ from src.integrations.user_data import load_config
 
 
 def get_api_key() -> str:
-    """API Key 来源优先级：环境变量 V4_API_KEY > config.yaml 的 api_key 字段。
+    """§87：API Key 只从用户数据目录 config.yaml 的 api_key 字段读取。
 
+    不再读取环境变量 V4_API_KEY / 项目根 .env（统一配置存储路径）。
     配置向导在运行时写入 config.yaml 后，经 load_config 的 mtime 缓存立即可读，
     无需重启即可生效。
     """
-    return os.environ.get("V4_API_KEY", "") or load_config().get("api_key", "")
+    return load_config().get("api_key", "")
 
 
 # 模块级快照（兼容旧引用，如 main.py 启动横幅）；运行时请以 get_api_key() 为准。
@@ -539,7 +502,10 @@ def call_llm(messages: list, system: str = "", model: str | None = None,
             return ""
         rounds += 1
 
-    return msg.get("content", "") or ""
+    # §88：调试日志——打印模型最终原始输出（前 500 字符），排查空输出 / 非有效 JSON / 缺工具调用
+    _raw = msg.get("content", "") or ""
+    print(f"[DEBUG] 模型原始输出（前500字符）: {_raw[:500]!r}")
+    return _raw
 
 
 def _extract_json(text: str) -> dict | None:
@@ -797,6 +763,17 @@ class RealModel:
             data["complexity"] = c
             return data
         # 优雅降级：没有结构化返回也不中断循环
+        # §88：API 返回空内容 -> 返回默认计划，避免触发「模型输出异常」用户介入
+        if not raw or not raw.strip():
+            return {
+                "classification": "direct",
+                "reasoning": "(模型未返回内容，使用默认计划)",
+                "plan": "直接执行用户请求",
+                "subtasks": [],
+                "decision": "直接执行用户请求",
+                "done": False,
+                "complexity": "simple",
+            }
         return {
             "classification": "task",
             "reasoning": "",

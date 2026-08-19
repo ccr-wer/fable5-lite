@@ -13,9 +13,6 @@ microsandbox
 # 交互式终端输入（历史记录 / 自动补全 / 多行输入）
 prompt_toolkit
 
-# 加载 .env 环境变量（缺失时静默跳过）
-python-dotenv
-
 # YAML 解析（用户数据、配置、技能索引）
 pyyaml
 

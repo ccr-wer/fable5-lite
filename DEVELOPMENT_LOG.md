@@ -2856,3 +2856,105 @@ fable5-orchestrator:
   `git remote set-url origin https://<PAT>@github.com/CCR-WER/fable5-lite.git`
   或配置 `git credential` / `gh auth login`。
 - 注：本回合完成提交（推送待凭据）。
+
+---
+
+## §87 统一配置存储路径：API Key 只从用户数据目录读取（2026-08-19）
+
+**目标**：API Key 只从用户数据目录 `config.yaml` 读取，移除环境变量 `V4_API_KEY` 优先
+与项目根 `.env` 依赖（统一配置存储路径）。
+
+### §87.1 修改
+- `src/integrations/llm.py`：
+  - `get_api_key()` 由「环境变量 V4_API_KEY > config.yaml」改为**只读**
+    `load_config().get("api_key", "")`（用户数据 config.yaml）；
+  - **移除 `_load_dotenv()`**（定义 + 模块加载调用）与 dotenv 依赖——不再从项目根 `.env`
+    读取配置；顶部 docstring 更新为 config.yaml 配置说明。
+  - `V4_API_URL` / `V4_MODEL` 保留 env 优先（非密钥，地址/模型名，可被环境覆盖）。
+- `src/cli/main.py::_run_api_key_wizard`：确认已通过 `save_config()` 写入用户数据
+  `config.yaml`（§44/§49 既有逻辑，未改）。
+- `requirements.txt`：移除 `python-dotenv`（不再使用）。
+- `README.md` 配置说明：删除「也可通过环境变量 V4_API_KEY 提供（优先级高于配置文件）」，
+  改为「§87：API Key 只从 config.yaml 读取；删除 api_key 字段重启可重新触发向导」。
+
+### §87.2 验证（§ 四）
+- `.env`：不存在。
+- 启动：config.yaml **已有 api_key**（§86 清理后被写入，疑似牌自行配置）→ 向导跳过
+  （`cfg.get("api_key")` 命中）；`python src/cli/main.py` 直接进入主循环 ✅（§ 四-2 以
+  「已有 Key 跳过向导」方式验证，未覆写既有 Key）
+- 再次启动：无向导，直接进入 ✅（§ 四-3）
+- `python -c "from src.integrations.llm import get_api_key; print(get_api_key())"` →
+  返回 config.yaml 中的 Key ✅（§ 四-4）
+- **env 隔离**：`V4_API_KEY=env-fake-key` 下 `get_api_key()` 仍返回 config 的 Key
+  （环境变量不再生效，只读 config）✅
+- 清理：`runs/session.json` 删除；config.yaml 的 Key **保留**（疑似牌真实配置，未擅动）。
+- 注：本回合未提交 Git（任务仅要求记录改动；如需提交可再行 `git add .` + commit）。
+
+---
+
+## §88 排查并修复「模型输出异常」（2026-08-19）
+
+**目标**：排查空输出 / 非有效 JSON / 缺少工具调用导致的「模型输出异常」用户介入，
+按 §88 增加调试日志与容错降级。
+
+### §88.1 排查（§ 一）
+1. **调试日志**（`src/integrations/llm.py::call_llm` 返回处）：新增
+   `[DEBUG] 模型原始输出（前500字符）: ...`——每次调用打印模型最终原始输出。
+2. **系统提示词长度**（`src/cli/main.py::_think_phase`）：打印
+   `[DEBUG] 系统提示词长度: 5926 字符`——确认提示词完整加载（§ 一-2 ✅）。
+3. **实测 API**（§ 一-3）：`call_llm([{'role':'user','content':'你好'}])` →
+   **HTTP 401 Authentication Fails（****6de2 invalid）**——config.yaml 中现有 Key
+   **无效**！这正是「模型输出异常」的**根因**：无效 Key → 401 → 空输出 → 触发用户介入。
+
+### §88.2 修复（§ 二）
+- `RealModel.think`：**空响应默认计划**——`raw` 为空时返回
+  `{"plan": "直接执行用户请求", "subtasks": [], "complexity": "simple", ...}`，
+  不再降级为 `(模型未返回内容)` 触发 think 异常（§ 二-1）。
+- 解析失败容错（§ 二-2）：`_extract_json` 失败时已有降级（plan=raw 原文），保留；
+  空响应由 §88.1 默认计划覆盖。
+- 系统提示词（§ 二-3）：实测 5926 字符、加载完整、格式正常，无需简化。
+
+### §88.3 验证（§ 三）
+- 「创建一个 test.txt 文件」：系统提示词长度 5926 ✅；简单任务跳过链式思考 ✅；
+  **think 空响应默认计划生效**（不再因 think 空输出触发用户介入）✅
+- **仍观察到「模型输出异常」（Act 阶段）**：Act 调用模型时 config 无效 Key → 401 →
+  空输出 → act 异常介入——**根因是 Key 无效而非逻辑缺陷**；提供有效 Key 后
+  （删除 config.yaml 的 api_key 重启向导输入，或直接改写 config）任务可正常执行。
+- 注：config.yaml 当前 Key（`****6de2`）经实测无效（401），已保留未擅动。
+- 注：本回合未提交 Git（任务仅要求记录改动；如需提交可再行 `git add .` + commit）。
+
+---
+
+## §89 全面排查 test-fable5-lite 环境问题（2026-08-19）
+
+**目标**：对比 `test-fable5-lite` 与 `fable5-lite` 环境差异，修复导致「模型输出异常」
+的问题。
+
+### §89.1 检查报告（6 项）
+1. **requirements.txt**：⚠️ → ✅ 修复——test 多 `python-dotenv`（§87 已移除的依赖），
+   已同步 fable5 版（移除）。
+2. **src/prompts/system_prompt_merged.md**：✅ 正常——存在且完整（5926 字符，与 fable5 一致）。
+3. **src/config/models.py**：✅ 正常——存在且含 `AVAILABLE_MODELS`（flash/pro 两项，内容一致）。
+4. **src/integrations/llm.py**：⚠️ → ✅ 修复——test 为旧版（读环境变量 / .env，缺 §87
+   统一 config 读取与 §88 调试/默认计划），已同步 fable5 版（API Key 只从用户数据
+   `%APPDATA%/fable5/config/config.yaml` 读取）。
+5. **src/cli/main.py**：⚠️ → ✅ 修复——test 缺 §88 调试日志与 think 空响应默认计划，
+   已同步 fable5 版。
+6. **config.yaml / .env**：✅ 正常——均不存在（符合预期；系统启动时自动生成用户数据
+   config.yaml；测试期间牌已配置有效 Key）。
+
+### §89.2 差异根因与修复
+- test-fable5-lite 是 §86 后的旧快照（缺 §87/§88）；src 无 test 独有文件（唯一未跟踪
+  `_enc_test.py` 为测试脚本，保留）。
+- 修复：同步 `llm.py` / `main.py` / `requirements.txt` 三个文件（fable5 → test）；
+  同步后 5 个关键文件归一化对比全部一致 ✅。
+
+### §89.3 验证（§ 三）
+- test 环境 `python src/cli/main.py` 输入「创建一个 test.txt 文件」：
+  - **无「模型输出异常」** ✅（think 默认计划 + act 正常响应）
+  - **裁决: VERIFIED** ✅；Token 统计 + 缓存命中率 97.8%（有效 Key，前缀缓存命中）✅
+  - 系统提示词长度 5926 字符、加载完整 ✅
+- 注：config.yaml 已由牌配置有效 Key（`****6be2`，实测 API 401 消失）；§88 的无效 Key
+  （`****6de2`）已按牌要求删除。
+- 注：test-fable5-lite 的 session.json 等运行时产物已清理；未提交 Git（任务仅要求记录改动；
+  如需提交可再行 `git add .` + commit）。

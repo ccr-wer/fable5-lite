@@ -38,7 +38,8 @@ python src/cli/main.py
 
 - **API Key**：首次启动的「配置向导」会提示输入 DeepSeek API Key，写入用户数据目录
   `config/config.yaml`（Windows: `%APPDATA%/fable5/`，Linux/macOS: `~/.local/share/fable5/`）。
-  也可通过环境变量 `V4_API_KEY` 提供（优先级高于配置文件）。
+  **§87：API Key 只从该 config.yaml 读取**（不再读取环境变量 / `.env`）；忘记 Key 可删除
+  config.yaml 中的 `api_key` 字段后重启，向导会再次出现。
 - **工作空间**：`/workspace` 查看当前工作空间；`/workspace <路径或别名>` 切换
   （别名：桌面 / 下载 / 文档 / 项目；切换时自动清空记忆层）。
 - **技能管理**：`/skill search <关键词> | /skill info <id> | /skill install <id> | /skill list`。

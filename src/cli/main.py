@@ -397,6 +397,11 @@ def _think_phase(task: str, model, memory_context: str, wm, skill_context: str =
     则跳过模型链式思考，直接构造一个极简 think 结果进入 Act（一次直接执行即进入验证）；
     否则调用模型真实 think，启动完整链式思考。
     """
+    # §88：调试日志——打印系统提示词长度，确认提示词完整加载
+    try:
+        print(_c(C_DIM, f"[DEBUG] 系统提示词长度: {len(load_system_prompt())} 字符"))
+    except Exception as e:
+        print(_c(C_DIM, f"[DEBUG] 系统提示词读取失败: {e}"))
     if _is_simple_direct_task(task):
         print(_c(C_DIM, "[过度思考控制] 检测到简单直接任务，跳过链式思考，直接进入执行。"))
         return {
