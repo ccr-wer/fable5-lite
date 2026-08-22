@@ -8,6 +8,34 @@
 Fable 5 青春版零件包 —— **Think → Act → Prove** 核心循环的最小可运行实现。
 基于 DeepSeek V4 的本地命令行智能体：模型决策、本地沙箱执行、规则验证层裁决。
 
+## 关于这个项目
+
+这个项目是一个**非科班大学生为理解 Agent 架构而做的实践**。它不是出于学术要求或商业目的，而是想搞清楚 Agent 系统到底是怎么运作的——从路由、记忆、沙箱到任务循环，每一层都亲手搭一遍。整个过程采用 vibecoding 的方式完成，即通过 AI 协作推进代码实现，自己负责判断和决策。
+
+### 为什么没有 exe / pip 安装？
+
+这个项目目前**以源码形式提供**，暂不提供预编译的 exe 或 pip 包，原因如下：
+
+1. **项目定位是"学习与研究"**，而非产品化工具。源码本身就是最好的文档。
+2. **依赖管理尚在完善中**，配置 `pyproject.toml` 和打包流程会在后续版本中逐步支持。
+3. **跨平台命令适配仍需测试**，目前的 `os-adapter` 技能处于基础可用状态。
+
+如果你希望快速体验，建议直接 `git clone` 后按文档运行。所有配置和运行步骤都已写在 README 中。
+
+---
+
+### 🇬🇧 English Version
+
+This project is a **practice-based exploration of Agent architecture**, built by a non-CS student to understand how Agent systems work — from routing and memory to sandboxing and task loops. It is implemented via vibe-coding, with AI assisting code generation and human handling judgment and decision-making.
+
+**No exe / pip package is provided at this stage**, because:
+
+- The project is positioned as a **learning & research artifact**, not a production tool.
+- Packaging (`pyproject.toml`) and cross-platform command adaptation are still being refined.
+- The current recommended way to use it is to `git clone` and follow the instructions.
+
+All setup steps are covered in this README.
+
 ## 特性
 
 - **Think → Act → Prove 循环**：模型先规划（think），再调用工具执行（act），最后由规则验证层 + 模型共同裁决（prove）。
